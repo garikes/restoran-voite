@@ -1,0 +1,17 @@
+menu = [
+    {"main dish": {
+        'name':'some',
+        'ingredient':'soil,love',
+        'price':'123423'
+    }},
+    {"soup": {
+        'name':'borsch',
+        'ingredient':'soil,love',
+        'price':'1423'
+    }},
+    {"drinks": {
+        'name':'water',
+        'ingredient':'water',
+        'price':'444'
+    }}
+]
