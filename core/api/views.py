@@ -12,7 +12,7 @@ from .models import *
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-
+import rest_framework_simplejwt
 # Create your views here.
 
 
@@ -44,20 +44,6 @@ class RegisterAPIView(APIView):
             except Exception as e:
                 print('Fail sent' + str(e))
         return Response({"User": request.data})
-
-    # def formaView(self, employee):
-    #     roles_list = [role.name for role in employee.user.roles.all()]
-    #     return {
-    #         "employee_no": employee.employee_no,
-    #         "user_id": {'User_id': employee.user.id,
-    #                     'first_name': employee.user.first_name,
-    #                     'last_name': employee.user.last_name,
-    #                     'email': employee.user.email,
-    #                     'phone': employee.user.phone,
-    #                     'role': roles_list
-    #                     }
-    #     }
-
 
 class LoginAPIView(APIView):
     def post(self, request, **kwargs):
@@ -98,8 +84,7 @@ class LoginAPIView(APIView):
                     return Response(data=res, status=status.HTTP_400_BAD_REQUEST)
         except Employee.DoesNotExist:
             print('User not found')
-            # Handle the case when the user is not found (if needed)
-            # For example, you can return a 404 Not Found response
+
             res = {
                 "msg": "User not found.",
                 "data": None,
@@ -166,17 +151,6 @@ class RestaurantAPIView(APIView):
         serializer.save()
         return Response({'Restaurant': self.formatRestoView(instance)})
 
-    # def delete(self, request, *args, **kwargs):
-    #     pk = kwargs.get("pk", None)
-    #     if not pk:
-    #         return Response({"error": "Method Delete not allowed"})
-    #     try:
-    #         instance = Restaurant.objects.get(pk=pk)
-    #         instance.delete()
-    #     except:
-    #         return Response({"error": "Object does not exists"})
-    #     return Response({"post": "delete post " + str(pk)})
-
 
 class MenuApiView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -205,45 +179,45 @@ class MenuApiView(APIView):
             'menu': menu.file,
         }
 
-    # def post(self, request, **kwargs):
-    #     serializer = MenuSerializer(data=request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response(serializer.data)
-    #     return Response(serializer.errors, status=400)
-    #
-    # def put(self, request, **kwargs):
-    #     pk = kwargs.get("pk", None)
-    #     deta = kwargs.get("deta", None)
-    #     if not pk or not deta:
-    #         return Response({"error": "Method Put not allowed"})
-    #     try:
-    #         menu = Menu.objects.get(restaurant=pk, created_by=deta)
-    #     except Menu.DoesNotExist:
-    #         return Response({"error": "Object does not exist"})
-    #
-    #         # Update the 'created_by' field with the date from the request data
-    #     if "created_by" in request.data:
-    #         deta_date = datetime.strptime(request.data["created_by"], "%Y-%m-%d").date()
-    #         request.data["created_by"] = deta_date
-    #
-    #     serializer = MenuSerializer(menu, data=request.data)
-    #     serializer.is_valid(raise_exception=True)
-    #     serializer.save()
-    #     print(serializer.instance)
-    #     return Response({'Menu': self.formatMenuView(serializer.instance)})
-    #
-    # def delete(self, request, *args, **kwargs):
-    #     pk = kwargs.get("pk", None)
-    #     deta = kwargs.get("deta", None)
-    #     if not pk or not deta:
-    #         return Response({"error": "Method Delete not allowed"})
-    #     try:
-    #         instance = Menu.objects.get(restaurant=pk, created_by=deta)
-    #         instance.delete()
-    #     except:
-    #         return Response({"error": "Object does not exists"})
-    #     return Response({"post": "delete post " + str(pk)})
+    def post(self, request, **kwargs):
+        serializer = MenuSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def put(self, request, **kwargs):
+        pk = kwargs.get("pk", None)
+        deta = kwargs.get("deta", None)
+        if not pk or not deta:
+            return Response({"error": "Method Put not allowed"})
+        try:
+            menu = Menu.objects.get(restaurant=pk, created_by=deta)
+        except Menu.DoesNotExist:
+            return Response({"error": "Object does not exist"})
+
+            # Update the 'created_by' field with the date from the request data
+        if "created_by" in request.data:
+            deta_date = datetime.strptime(request.data["created_by"], "%Y-%m-%d").date()
+            request.data["created_by"] = deta_date
+
+        serializer = MenuSerializer(menu, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        print(serializer.instance)
+        return Response({'Menu': self.formatMenuView(serializer.instance)})
+
+    def delete(self, request, *args, **kwargs):
+        pk = kwargs.get("pk", None)
+        deta = kwargs.get("deta", None)
+        if not pk or not deta:
+            return Response({"error": "Method Delete not allowed"})
+        try:
+            instance = Menu.objects.get(restaurant=pk, created_by=deta)
+            instance.delete()
+        except:
+            return Response({"error": "Object does not exists"})
+        return Response({"post": "delete post " + str(pk)})
 
 
 # потрібно ДОРОБИТИ
@@ -257,9 +231,10 @@ class VoteAPIView(APIView):
         return formatted_datetime
 
     def get(self, request, menu_id):
-        # employee = Employee.objects.get(username=)
+        username = request.username
+        employee = Employee.objects.get(username=username)
         menu = Menu.objects.get(id=menu_id)
-        employee = Employee.objects.get(pk=1)
+
 
         if Vote.objects.filter(
                 employee=employee,
