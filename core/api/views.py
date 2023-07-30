@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import requests
+from django.conf import settings
 from django.db.models import Window, F, Max
 from django.db.models.functions import Rank
 from rest_framework.permissions import IsAuthenticated
@@ -11,8 +12,12 @@ from .serializer import *
 from .models import *
 from rest_framework import generics, status
 from rest_framework.response import Response
+import jwt
+
 
 import rest_framework_simplejwt
+
+
 # Create your views here.
 
 
@@ -29,21 +34,25 @@ class RegisterAPIView(APIView):
                     password=request.data.get('password'),
                     phone=request.data.get('phone'),
                 )
+
+                url = 'http://127.0.0.1:8000/api/v1/auth/users/'
+                myobj = {
+                    'username': request.data.get('username'),
+                    'email': request.data.get('email'),
+                    'password': request.data.get('password')
+                }
+                print(myobj)
+                x = requests.post(url, json=myobj)
+                print(x)
+
+                return Response(data={"User": request.data, "status": status.HTTP_200_OK})
             except Exception as e:
                 res = {"msg": str(e), "data": None, "success": False}
                 return Response(data=res, status=status.HTTP_400_BAD_REQUEST)
-            try:
-                url = 'http://127.0.0.1:8000/api/v1/auth/users/'
-                myobj = {
-                    'username': request.data['username'],
-                    'email': request.data['email'],
-                    'password': request.data['password']
-                }
-                x = requests.post(url, json=myobj)
-                print(x)
-            except Exception as e:
-                print('Fail sent' + str(e))
-        return Response({"User": request.data})
+        else:
+            res = {"msg": "Invalid data", "data": serializer.errors, "success": False}
+            return Response(data=res, status=status.HTTP_400_BAD_REQUEST)
+
 
 class LoginAPIView(APIView):
     def post(self, request, **kwargs):
@@ -58,8 +67,6 @@ class LoginAPIView(APIView):
                     }
                     x = requests.post(url, json=myobj)
                     print(x)
-                    # Add your logic to handle the response from the API here
-                    # For example, you can check the response status code and return an appropriate Response object
                     if x.status_code == 200:
                         res = {
                             "msg": "Login successful!",
@@ -93,17 +100,25 @@ class LoginAPIView(APIView):
             return Response(data=res, status=status.HTTP_404_NOT_FOUND)
 
 
-
 class LogoutAPIView(APIView):
+    permission_classes = (IsAuthenticated,)
     def post(self, request):
         try:
-            refresh_token = request.data['refresh_token']
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"detail": "Logout successful"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            refresh_token = request.data.get('refresh', None)
+            access_token = request.data.get('access', None)
 
+            if refresh_token:
+                refresh_token_obj = RefreshToken(refresh_token)
+                refresh_token_obj.blacklist()
+
+            if access_token:
+                access_token_obj = RefreshToken(access_token)
+                access_token_obj.blacklist()
+
+            return Response(data={"msg": "Logout successful!", "success": True}, status=status.HTTP_200_OK)
+        except Exception as e:
+            res = {"msg": str(e), "success": False}
+            return Response(data=res, status=status.HTTP_400_BAD_REQUEST)
 
 class RestaurantAPIView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -219,37 +234,28 @@ class MenuApiView(APIView):
             return Response({"error": "Object does not exists"})
         return Response({"post": "delete post " + str(pk)})
 
-
-# потрібно ДОРОБИТИ
-# ////////////////////////////
 class VoteAPIView(APIView):
     permission_classes = (IsAuthenticated,)
-
     def today_date(self):
         current_datetime = datetime.now()
         formatted_datetime = current_datetime.strftime('%Y-%m-%d')
         return formatted_datetime
 
     def get(self, request, menu_id):
-        username = request.username
+        username = request.user.username
+
         employee = Employee.objects.get(username=username)
         menu = Menu.objects.get(id=menu_id)
 
-
-        if Vote.objects.filter(
-                employee=employee,
-                menu__id=menu_id).exists():
+        if Vote.objects.filter(employee=employee, menu__id=menu_id).exists():
             res = {"msg": 'You already voted!', "data": None, "success": False}
             return Response(data=res, status=status.HTTP_200_OK)
         else:
-            Vote.objects.create(
-                employee=employee,
-                menu=menu
-            )
+            Vote.objects.create(employee=employee, menu=menu)
             menu.votes += 1
             menu.save()
-            vote = Vote.objects.all().values()
-            return Response({'voice': vote})
+            votes = Vote.objects.all().values()
+            return Response({'votes': votes})
 
 
 class ResultsAPIView(APIView):

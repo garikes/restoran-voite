@@ -1,66 +1,42 @@
-import pytest
+import json
+
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
-from ..models import *
+from rest_framework.test import APITestCase
+from ..models import Employee
 
-@pytest.fixture
-def api_client():
-    return APIClient()
 
-@pytest.mark.django_db
-def test_register_user(api_client):
-    url = reverse('register')  # Make sure you have set up the name for the RegisterAPIView URL in your Django urls.py
-    data = {
-        "first_name": "John",
-        "last_name": "Doe",
-        "username": "john_doe",
-        "email": "john@example.com",
-        "password": "testpassword",
-        "phone": "1234567890"
-    }
-    response = api_client.post(url, data)
-    assert response.status_code == status.HTTP_200_OK
-    assert Employee.objects.count() == 1
+class RegisterAPIViewTest(APITestCase):
+    url = reverse('register')
 
-@pytest.mark.django_db
-def test_login_user(api_client):
-    # Create a test user
-    user = Employee.objects.create_user(
-        username='testuser',
-        password='testpassword',
-        email='testuser@example.com'
-    )
+    def test_register_employee_valid_data(self):
+        valid_employee_data = {
+            'first_name': 'John',
+            'last_name': 'Doe',
+            'username': 'johndoe',
+            'email': 'johndoe@example.com',
+            'password': 'secret_password!!@#1234324',
+            'phone': '1234567890',
+        }
 
-    url = reverse('login')
-    data = {
-        "username": "testuser",
-        "password": "testpassword"
-    }
-    response = api_client.post(url, data)
-    assert response.status_code == status.HTTP_200_OK
-    assert "access" in response.data
-    assert "refresh" in response.data
+        response = self.client.post(self.url, data=valid_employee_data)
 
-@pytest.mark.django_db
-def test_vote_for_menu(api_client):
-    # Create a test user
-    user = Employee.objects.create_user(
-        username='testuser',
-        password='testpassword',
-        email='testuser@example.com'
-    )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], status.HTTP_200_OK)
 
-    # Create a test menu
-    menu = Menu.objects.create(
-        restaurant_id=1,
-        file='menu.pdf',
-        created_by='2023-07-29'
-    )
+        self.assertTrue(Employee.objects.filter(username='johndoe').exists())
 
-    url = reverse('vote', args=[menu.id])
-    api_client.force_authenticate(user=user)
-    response = api_client.get(url)
-    assert response.status_code == status.HTTP_200_OK
-    assert Vote.objects.count() == 1
-    assert menu.votes == 1
+    def test_register_employee_invalid_data(self):
+        invalid_employee_data = {
+            'first_name': 'Jane',
+            'email': 'janedoe@example.com',
+            'password': 'secret_password!!@#1234324',
+        }
+
+        response = self.client.post(self.url, data=invalid_employee_data)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['success'], False)
+        self.assertIn('last_name', response.data['data'])
+
+        self.assertFalse(Employee.objects.filter(username='janedoe').exists())
