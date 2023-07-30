@@ -211,7 +211,6 @@ class MenuApiView(APIView):
         except Menu.DoesNotExist:
             return Response({"error": "Object does not exist"})
 
-            # Update the 'created_by' field with the date from the request data
         if "created_by" in request.data:
             deta_date = datetime.strptime(request.data["created_by"], "%Y-%m-%d").date()
             request.data["created_by"] = deta_date
@@ -278,7 +277,6 @@ class ResultsAPIView(APIView):
         menus_with_max_votes = current_menu.filter(votes=max_votes)
 
         if len(menus_with_max_votes) == 1:
-            # Якщо лише один об'єкт з максимальним votes, поверніть його дані
             res = {
                 "data": [{
                     "restaurant": item.restaurant.name,
@@ -289,7 +287,6 @@ class ResultsAPIView(APIView):
             }
             return Response(data=res, status=status.HTTP_200_OK)
         else:
-            # Якщо є кілька об'єктів з однаковими votes, поверніть дані всіх цих меню
             res = {
                 "data": [{
                     "restaurant": item.restaurant.name,
